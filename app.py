@@ -24,7 +24,6 @@ from core.cpm_engine import CPMEngine
 from views.dashboard import render_dashboard
 from views.gantt import render_gantt
 from views.my_tasks import render_my_tasks
-from views.cpm_view import render_cpm_view
 from views.task_editor import render_task_editor
 from views.diagnostics import render_diagnostics
 
@@ -151,7 +150,7 @@ with st.sidebar:
     st.markdown(f"**🧭 Navegación**")
     page = st.radio(
         "Ir a",
-        ["📊 Dashboard", "📅 Gantt", "🔴 Ruta Crítica", "👤 Mis Tareas",
+        ["📊 Dashboard", "📅 Gantt", "👤 Mis Tareas",
          "✏️ Editor", "🔍 Diagnóstico"],
         key="nav",
         label_visibility="collapsed",
@@ -196,9 +195,6 @@ else:
 
     elif page == "📅 Gantt":
         render_gantt(df, cpm_engine)
-
-    elif page == "🔴 Ruta Crítica":
-        render_cpm_view(df, cpm_engine)
 
     elif page == "👤 Mis Tareas":
         render_my_tasks(df)
