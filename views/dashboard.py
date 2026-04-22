@@ -190,9 +190,14 @@ def render_dashboard(df: pd.DataFrame, cpm_stats: dict):
     st.markdown("---")
 
     # ── Avance CAD / FEM por Microsubsistema ──
-    CAD_KEYWORDS = r"(?i)\b(cad|fem|fea|simulaci|modelo\s*3d|plano|renderiz|ensambl|dise[ñn]o\s*3d|sketch|solid|solidworks)\b"
-    df_cad = df[df["actividad"].str.contains(CAD_KEYWORDS, na=False) |
-                df.get("entregable", pd.Series(dtype=str)).str.contains(CAD_KEYWORDS, na=False)]
+    CAD_KEYWORDS = r"(?i)\b(cad|fem|fea|simulaci[oó]n|modelo\s*3d|renderiz|dise[ñn]o\s*3d|sketch|solidworks)\b"
+    # Paquetes que son íntegramente CAD/FEM aunque sus actividades no tengan esa keyword
+    CAD_PAQUETES = r"(?i)(porta.?diferencial|porta diferencial)"
+    df_cad = df[
+        df["actividad"].str.contains(CAD_KEYWORDS, na=False) |
+        df.get("entregable", pd.Series(dtype=str)).str.contains(CAD_KEYWORDS, na=False) |
+        df.get("paquete", pd.Series(dtype=str)).str.contains(CAD_PAQUETES, na=False)
+    ]
 
     if not df_cad.empty:
         st.markdown("### Avance CAD / FEM por Microsubsistema")
@@ -267,6 +272,47 @@ def render_dashboard(df: pd.DataFrame, cpm_stats: dict):
             )
             fig_cad_pie = plotly_dark_layout(fig_cad_pie, height=350)
             st.plotly_chart(fig_cad_pie, use_container_width=True)
+
+        # ── Última tarea CAD/FEM por microsubsistema ──
+        st.markdown("#### Última tarea CAD/FEM por microsubsistema")
+
+        df_cad_dated = df_cad[df_cad["fecha_fin"].notna()].copy()
+
+        def _last_cad_tasks(df_sub):
+            """Devuelve la tarea con fecha_fin más tardía por microsubsistema.
+            Si hay empate de fecha, toma la última en la secuencia del cronograma."""
+            return (
+                df_sub.reset_index()
+                .sort_values(["fecha_fin", "index"], ascending=[False, False])
+                .groupby("microsubsistema", as_index=False)
+                .first()[["microsubsistema", "actividad", "fecha_fin", "estado"]]
+                .sort_values("microsubsistema")
+            )
+
+        df_dym_cad = df_cad_dated[df_cad_dated["subsistema"] == "DYM"]
+        df_elec_cad = df_cad_dated[df_cad_dated["subsistema"] == "Electrónica"]
+
+        last_dym = _last_cad_tasks(df_dym_cad) if not df_dym_cad.empty else pd.DataFrame()
+        last_elec = _last_cad_tasks(df_elec_cad) if not df_elec_cad.empty else pd.DataFrame()
+
+        st.markdown("**DYM**")
+        if not last_dym.empty:
+            last_dym = last_dym.copy()
+            last_dym["fecha_fin"] = last_dym["fecha_fin"].dt.strftime("%d/%m/%Y")
+            last_dym.columns = ["Microsubsistema", "Última tarea CAD/FEM", "Fecha fin", "Estado"]
+            st.dataframe(last_dym.reset_index(drop=True), use_container_width=True, hide_index=True)
+        else:
+            st.info("No hay tareas CAD/FEM con fechas en DYM.")
+
+        st.markdown("**Electrónica**")
+        if not last_elec.empty:
+            last_elec = last_elec.copy()
+            last_elec["fecha_fin"] = last_elec["fecha_fin"].dt.strftime("%d/%m/%Y")
+            last_elec.columns = ["Microsubsistema", "Última tarea CAD/FEM", "Fecha fin", "Estado"]
+            st.dataframe(last_elec.reset_index(drop=True), use_container_width=True, hide_index=True)
+        else:
+            st.info("No hay tareas CAD/FEM con fechas en Electrónica.")
+
     else:
         st.markdown("### Avance CAD / FEM por Microsubsistema")
         st.info("No se encontraron actividades CAD/FEM en los datos.")
@@ -274,9 +320,15 @@ def render_dashboard(df: pd.DataFrame, cpm_stats: dict):
     st.markdown("---")
 
     # ── Avance Planos por Microsubsistema ──
+    # Solo planos de manufactura (DYM): excluye "planos eléctricos" de Electrónica
     PLANOS_KEYWORDS = r"(?i)\b(plano|planos|drawing|dibujo técnico|dibujo)\b"
-    df_planos = df[df["actividad"].str.contains(PLANOS_KEYWORDS, na=False) |
-                   df.get("entregable", pd.Series(dtype=str)).str.contains(PLANOS_KEYWORDS, na=False)]
+    PLANOS_EXCLUIR = r"(?i)(el[eé]ctric|electr[oó]nic|pcb|esquem)"
+    df_planos_raw = df[df["actividad"].str.contains(PLANOS_KEYWORDS, na=False) |
+                       df.get("entregable", pd.Series(dtype=str)).str.contains(PLANOS_KEYWORDS, na=False)]
+    df_planos = df_planos_raw[
+        ~df_planos_raw["actividad"].str.contains(PLANOS_EXCLUIR, na=False) &
+        ~df_planos_raw.get("entregable", pd.Series(dtype=str)).str.contains(PLANOS_EXCLUIR, na=False)
+    ]
 
     if not df_planos.empty:
         st.markdown("### Avance Planos por Microsubsistema")
