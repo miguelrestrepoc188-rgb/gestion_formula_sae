@@ -5,6 +5,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
+from core.history import load_history, get_previous_snapshot, delete_snapshot, move_snapshot
 from config import (
     LILA, AMARILLO_NEON, AZUL_ELECTRICO, MORADO_OSCURO,
     BG_CARD, BG_PRIMARY, BORDER_SUBTLE, TEXT_MUTED, BLANCO,
@@ -62,12 +63,73 @@ def render_dashboard(df: pd.DataFrame, cpm_stats: dict):
         dur_days = 0
         dur_weeks = 0
 
+    # Delta de tareas vs. carga anterior
+    prev = get_previous_snapshot()
+    if prev is not None:
+        delta_total = total - prev["total"]
+        if delta_total > 0:
+            delta_total_str = f"+{delta_total} vs. carga anterior"
+            delta_color_total = "normal"
+        elif delta_total < 0:
+            delta_total_str = f"{delta_total} vs. carga anterior"
+            delta_color_total = "inverse"
+        else:
+            delta_total_str = "Sin cambios vs. carga anterior"
+            delta_color_total = "off"
+    else:
+        delta_total_str = None
+        delta_color_total = "off"
+
     c1, c2, c3, c4, c5 = st.columns(5)
-    c1.metric("Actividades Totales", total)
+    c1.metric(
+        "Actividades Totales",
+        total,
+        delta=delta_total_str,
+        delta_color=delta_color_total,
+    )
     c2.metric("Avance Global", f"{avance_global}%")
     c3.metric("Terminadas", terminadas, delta=f"{round(terminadas/total*100,1)}%")
     c4.metric("En Progreso", en_progreso)
     c5.metric("Duración", f"{dur_days}D", delta=f"{dur_weeks} semanas", delta_color="off")
+
+    # ── Historial de cargas ──
+    history = load_history()
+    if len(history) >= 1:
+        with st.expander(f"Historial de cambios de tareas ({len(history)} registros)", expanded=False):
+            st.caption("Usa las flechas para reordenar y el botón rojo para eliminar un registro.")
+
+            for i, entry in enumerate(history):
+                prv = history[i - 1] if i > 0 else None
+                diff = entry["total"] - prv["total"] if prv else None
+                if diff is None:
+                    cambio_txt = "—"
+                elif diff > 0:
+                    cambio_txt = f"▲ +{diff}"
+                elif diff < 0:
+                    cambio_txt = f"▼ {diff}"
+                else:
+                    cambio_txt = "Sin cambios"
+
+                col_info, col_up, col_down, col_del = st.columns([6, 1, 1, 1])
+                with col_info:
+                    st.markdown(
+                        f"**{i + 1}.** `{entry['filename']}`  ·  "
+                        f"{entry['timestamp'].replace('T', ' ')}  ·  "
+                        f"**{entry['total']}** tareas  ·  {cambio_txt}  ·  "
+                        f"Avance: {entry['avance_pct']}%"
+                    )
+                with col_up:
+                    if i > 0 and st.button("↑", key=f"hist_up_{i}", help="Mover arriba"):
+                        move_snapshot(i, -1)
+                        st.rerun()
+                with col_down:
+                    if i < len(history) - 1 and st.button("↓", key=f"hist_down_{i}", help="Mover abajo"):
+                        move_snapshot(i, 1)
+                        st.rerun()
+                with col_del:
+                    if st.button("🗑", key=f"hist_del_{i}", help="Eliminar registro"):
+                        delete_snapshot(i)
+                        st.rerun()
 
     st.markdown("---")
 
@@ -100,6 +162,182 @@ def render_dashboard(df: pd.DataFrame, cpm_stats: dict):
         st.dataframe(df_show.reset_index(drop=True), use_container_width=True, height=400)
     else:
         st.success("No hay actividades vencidas. El proyecto va al día.")
+
+    st.markdown("---")
+
+    # ── Actividades Vencidas por Microsubsistema ──
+    MICROSUBSISTEMAS_ORDEN = [
+        "Chasis", "Transmisión", "Suspensión", "Frenos",
+        "Dirección", "Aerodinámica", "Batería", "Potencia", "Telemetría",
+    ]
+
+    st.markdown("### Actividades Vencidas por Microsubsistema")
+
+    if not df_vencidas.empty:
+        # Asegurar que dias_atraso esté calculado (por si el bloque anterior no lo hizo)
+        if "dias_atraso" not in df_vencidas.columns:
+            df_vencidas["dias_atraso"] = (today - df_vencidas["fecha_fin"]).dt.days
+
+        micros_con_vencidas = (
+            df_vencidas["microsubsistema"].dropna().unique().tolist()
+            if "microsubsistema" in df_vencidas.columns else []
+        )
+        # Ordenar: primero los del orden definido, luego el resto
+        micros_ordenados = [m for m in MICROSUBSISTEMAS_ORDEN if m in micros_con_vencidas]
+        micros_ordenados += [m for m in micros_con_vencidas if m not in MICROSUBSISTEMAS_ORDEN]
+
+        if not micros_ordenados:
+            st.info("No hay datos de microsubsistema en las actividades vencidas.")
+        else:
+            for micro in micros_ordenados:
+                df_micro = df_vencidas[df_vencidas["microsubsistema"] == micro].sort_values(
+                    "dias_atraso", ascending=False
+                )
+                n_micro = len(df_micro)
+                max_atraso = int(df_micro["dias_atraso"].max())
+
+                with st.expander(
+                    f"**{micro}** — {n_micro} actividad{'es' if n_micro != 1 else ''} vencida{'s' if n_micro != 1 else ''} · máx. {max_atraso} días de atraso",
+                    expanded=False,
+                ):
+                    display_cols = ["actividad", "responsable", "fecha_fin", "dias_atraso", "estado"]
+                    available = [c for c in display_cols if c in df_micro.columns]
+                    df_micro_show = df_micro[available].copy()
+                    df_micro_show = df_micro_show.rename(columns={
+                        "actividad": "Actividad",
+                        "responsable": "Responsable",
+                        "fecha_fin": "Fecha Fin",
+                        "dias_atraso": "Días de Atraso",
+                        "estado": "Estado",
+                    })
+                    if "Fecha Fin" in df_micro_show.columns:
+                        df_micro_show["Fecha Fin"] = df_micro_show["Fecha Fin"].dt.strftime("%d/%m/%Y")
+                    st.dataframe(df_micro_show.reset_index(drop=True), use_container_width=True, hide_index=True)
+    else:
+        st.success("No hay actividades vencidas en ningún microsubsistema.")
+
+    st.markdown("---")
+
+    # ── Cronograma: posición actual vs. fecha límite de diseño ──
+    st.markdown("### Cronograma del Proyecto")
+
+    if pd.notna(fecha_min) and pd.notna(fecha_max):
+        today_ts = pd.Timestamp.now().normalize()
+        total_days = (fecha_max - fecha_min).days
+        elapsed_days = max(0, (today_ts - fecha_min).days)
+        remaining_days = max(0, (fecha_max - today_ts).days)
+        pct_tiempo = min(100.0, round(elapsed_days / total_days * 100, 1)) if total_days > 0 else 0.0
+
+        # ── Fila de métricas de tiempo ──
+        tm1, tm2, tm3, tm4 = st.columns(4)
+        tm1.metric("Inicio del proyecto", fecha_min.strftime("%d/%m/%Y"))
+        tm2.metric("Fin diseño a detalle", fecha_max.strftime("%d/%m/%Y"))
+        tm3.metric("Días transcurridos", elapsed_days)
+        tm4.metric(
+            "Días restantes",
+            remaining_days,
+            delta="EN PLAZO" if today_ts <= fecha_max else "VENCIDO",
+            delta_color="normal" if today_ts <= fecha_max else "inverse",
+        )
+
+        # ── Barra de progreso temporal ──
+        today_x = min(today_ts, fecha_max)
+
+        fig_cron = go.Figure()
+
+        # Fondo total (gris)
+        fig_cron.add_trace(go.Bar(
+            x=[(fecha_max - fecha_min).total_seconds() * 1000],
+            y=[""],
+            base=[fecha_min.value // 10**6],
+            orientation="h",
+            marker=dict(color=BORDER_SUBTLE),
+            hoverinfo="skip",
+            showlegend=False,
+        ))
+
+        # Porción transcurrida (lila)
+        fig_cron.add_trace(go.Bar(
+            x=[(today_x - fecha_min).total_seconds() * 1000],
+            y=[""],
+            base=[fecha_min.value // 10**6],
+            orientation="h",
+            marker=dict(color=LILA),
+            name="Tiempo transcurrido",
+            hovertemplate=f"Transcurrido: {elapsed_days} días ({pct_tiempo}%)<extra></extra>",
+        ))
+
+        # Línea vertical: HOY
+        fig_cron.add_vline(
+            x=today_ts.value // 10**6,
+            line=dict(color=AMARILLO_NEON, width=3, dash="solid"),
+            annotation_text=f"HOY · {today_ts.strftime('%d/%m/%Y')}",
+            annotation_position="top",
+            annotation_font=dict(color=AMARILLO_NEON, size=12, family="Poppins"),
+        )
+
+        # Marcador inicio
+        fig_cron.add_annotation(
+            x=fecha_min.value // 10**6,
+            y=0,
+            text=f"Inicio<br>{fecha_min.strftime('%d/%m/%Y')}",
+            showarrow=False,
+            yshift=-28,
+            font=dict(color=TEXT_MUTED, size=11, family="Poppins"),
+            xanchor="left",
+        )
+
+        # Marcador fin
+        fig_cron.add_annotation(
+            x=fecha_max.value // 10**6,
+            y=0,
+            text=f"Fin diseño<br>{fecha_max.strftime('%d/%m/%Y')}",
+            showarrow=False,
+            yshift=-28,
+            font=dict(color=COLOR_DANGER, size=11, family="Poppins"),
+            xanchor="right",
+        )
+
+        fig_cron.update_layout(
+            barmode="overlay",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(family="Poppins", color=TEXT_MUTED),
+            height=130,
+            margin=dict(l=10, r=10, t=30, b=50),
+            showlegend=False,
+            xaxis=dict(
+                type="date",
+                range=[
+                    (fecha_min - pd.Timedelta(days=5)).strftime("%Y-%m-%d"),
+                    (fecha_max + pd.Timedelta(days=5)).strftime("%Y-%m-%d"),
+                ],
+                gridcolor=BORDER_SUBTLE,
+                tickformat="%b %Y",
+                tickfont=dict(color=TEXT_MUTED, size=11),
+            ),
+            yaxis=dict(showticklabels=False, showgrid=False, zeroline=False),
+        )
+
+        st.plotly_chart(fig_cron, use_container_width=True)
+
+        # ── Texto de estado ──
+        if today_ts > fecha_max:
+            st.error(f"El plazo de diseño a detalle venció hace {elapsed_days - total_days} días.")
+        else:
+            pct_avance_vs_tiempo = round(avance_global - pct_tiempo, 1)
+            if pct_avance_vs_tiempo >= 0:
+                st.success(
+                    f"Se ha consumido el **{pct_tiempo}%** del tiempo disponible con un avance global de "
+                    f"**{avance_global}%** — el proyecto va **{pct_avance_vs_tiempo}pp adelantado** respecto al tiempo."
+                )
+            else:
+                st.warning(
+                    f"Se ha consumido el **{pct_tiempo}%** del tiempo disponible con un avance global de "
+                    f"**{avance_global}%** — el proyecto va **{abs(pct_avance_vs_tiempo)}pp atrasado** respecto al tiempo."
+                )
+    else:
+        st.info("No hay fechas suficientes para mostrar el cronograma.")
 
     st.markdown("---")
 
@@ -145,11 +383,17 @@ def render_dashboard(df: pd.DataFrame, cpm_stats: dict):
     with col_left:
         st.markdown("### Avance por Microsubsistema")
         micro_progress = (
-            df.groupby(["subsistema", "microsubsistema"])["avance_pct"]
-            .mean()
+            df.groupby(["subsistema", "microsubsistema"])
+            .agg(
+                total=("id", "count"),
+                terminadas=("estado", lambda x: (x == "terminado").sum()),
+            )
             .reset_index()
-            .sort_values("avance_pct", ascending=True)
         )
+        micro_progress["avance_pct"] = (
+            micro_progress["terminadas"] / micro_progress["total"] * 100
+        ).round(1)
+        micro_progress = micro_progress.sort_values("avance_pct", ascending=True)
 
         fig_bar = go.Figure()
         fig_bar.add_trace(go.Bar(
@@ -161,12 +405,14 @@ def render_dashboard(df: pd.DataFrame, cpm_stats: dict):
                 colorscale=[[0, MORADO_OSCURO], [0.5, LILA], [1, AMARILLO_NEON]],
                 line=dict(width=0),
             ),
-            text=micro_progress["avance_pct"].apply(lambda x: f"{x:.0f}%"),
+            text=micro_progress.apply(
+                lambda r: f"{r['avance_pct']:.0f}%  ({int(r['terminadas'])}/{int(r['total'])})", axis=1
+            ),
             textposition="outside",
             textfont=dict(color=BLANCO, size=11),
         ))
         fig_bar = plotly_dark_layout(fig_bar, height=max(300, len(micro_progress) * 35))
-        fig_bar.update_xaxes(range=[0, 105], title="Avance (%)")
+        fig_bar.update_xaxes(range=[0, 130], title="Avance (%)")
         fig_bar.update_yaxes(title="")
         st.plotly_chart(fig_bar, use_container_width=True)
 
