@@ -21,6 +21,7 @@ st.set_page_config(
 from config import GLOBAL_CSS, LILA, AMARILLO_NEON, TEXT_MUTED, BG_CARD, BLANCO, MORADO_OSCURO
 from core.data_cleaner import run_pipeline, load_excel
 from core.cpm_engine import CPMEngine
+from core.history import save_snapshot
 from views.dashboard import render_dashboard
 from views.gantt import render_gantt
 from views.my_tasks import render_my_tasks
@@ -92,6 +93,9 @@ with st.sidebar:
                 st.session_state.df = df
                 st.session_state.report = report
                 st.session_state.data_loaded = True
+
+                # Guardar snapshot en historial
+                save_snapshot(df, uploaded.name)
 
                 # CPM
                 engine = CPMEngine()

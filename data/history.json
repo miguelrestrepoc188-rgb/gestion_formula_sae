@@ -1,0 +1,22 @@
+[
+  {
+    "timestamp": "2026-05-10T10:54:16",
+    "filename": "Cronograma Detallado de Tareas.xlsx",
+    "total": 415,
+    "terminadas": 300,
+    "en_progreso": 38,
+    "no_iniciadas": 77,
+    "bloqueadas": 0,
+    "avance_pct": 76.9
+  },
+  {
+    "timestamp": "2026-05-10T10:55:43",
+    "filename": "Cronograma Detallado de Tareas (1).xlsx",
+    "total": 415,
+    "terminadas": 301,
+    "en_progreso": 38,
+    "no_iniciadas": 76,
+    "bloqueadas": 0,
+    "avance_pct": 77.1
+  }
+]
