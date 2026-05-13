@@ -18,5 +18,15 @@
     "no_iniciadas": 76,
     "bloqueadas": 0,
     "avance_pct": 77.1
+  },
+  {
+    "timestamp": "2026-05-12T21:33:21",
+    "filename": "Cronograma Detallado de Tareas (1).xlsx",
+    "total": 415,
+    "terminadas": 301,
+    "en_progreso": 38,
+    "no_iniciadas": 76,
+    "bloqueadas": 0,
+    "avance_pct": 77.1
   }
 ]
