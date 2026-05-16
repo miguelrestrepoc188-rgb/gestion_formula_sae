@@ -71,5 +71,13 @@ def signup_page():
 
             st.success("Usuario creado correctamente")
 
+            # Prellenar login
+            st.session_state.login_email = email
+
+            # Volver automáticamente a login
+            st.session_state.auth_mode = "login"
+
+            st.rerun()
+
         except Exception as e:
             st.error(str(e))

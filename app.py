@@ -50,6 +50,8 @@ def init_session_state():
         st.session_state.show_login = False
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
+    if "auth_mode" not in st.session_state:
+        st.session_state.auth_mode = "login"
 
 
 init_session_state()
