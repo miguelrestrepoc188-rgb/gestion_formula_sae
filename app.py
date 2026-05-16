@@ -28,6 +28,7 @@ from views.my_tasks import render_my_tasks
 from views.task_editor import render_task_editor
 from views.diagnostics import render_diagnostics
 from views.auth_view import auth_view
+from auth.session import clear_session
 
 
 # ── Inyectar CSS Kratos ──
@@ -76,6 +77,12 @@ with st.sidebar:
             st.rerun()
     else:
         st.success("✅ Sesión iniciada")
+    
+        if st.button(
+            "🚪 Cerrar sesión",
+            use_container_width=True
+        ):
+            clear_session()
 
         # Carga de datos
         st.markdown(f"**📁 Datos del Proyecto**")
