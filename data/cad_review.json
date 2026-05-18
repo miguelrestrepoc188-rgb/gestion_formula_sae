@@ -1,0 +1,10 @@
+{
+  "Frenos": [
+    {
+      "nombre": "Pedalera",
+      "bd": false,
+      "dfm": false,
+      "dfa": false
+    }
+  ]
+}

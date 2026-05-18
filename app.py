@@ -27,6 +27,7 @@ from views.gantt import render_gantt
 from views.my_tasks import render_my_tasks
 from views.task_editor import render_task_editor
 from views.diagnostics import render_diagnostics
+from views.cad_review import render_cad_review
 from views.auth_view import auth_view
 from auth.session import clear_session
 
@@ -192,7 +193,15 @@ with st.sidebar:
 
 # ── Contenido principal ──
 # ── Contenido principal ──
-
+    # Navegación
+    st.markdown(f"**🧭 Navegación**")
+    page = st.radio(
+        "Ir a",
+        ["📊 Dashboard", "📅 Gantt", "👤 Mis Tareas",
+         "✏️ Editor", "🔍 Diagnóstico", "📐 Revisión CAD"],
+        key="nav",
+        label_visibility="collapsed",
+    )
 if not st.session_state.authenticated:
 
     if st.session_state.show_login:
@@ -220,7 +229,27 @@ else:
 
     # Usuario autenticado pero SIN datos
     if not st.session_state.data_loaded:
+# ── Contenido principal ──
+if page == "📐 Revisión CAD":
+    render_cad_review()
 
+elif not st.session_state.data_loaded:
+    # Landing page
+    st.markdown(
+        "<div style='text-align:center; padding:80px 20px;'>"
+        "<div class='kratos-logo' style='font-size:3.5rem; margin-bottom:8px;'>"
+        "<span class='k-accent'>K</span><span class='k-rest'>RATOS</span>"
+        "</div>"
+        f"<div style='color:{TEXT_MUTED}; font-size:1rem; letter-spacing:0.2em; "
+        f"text-transform:uppercase; margin-bottom:40px;'>Project Management Platform</div>"
+        f"<div style='color:{TEXT_MUTED}; font-size:0.95rem; max-width:500px; margin:0 auto;'>"
+        f"Carga tu cronograma Excel desde el panel lateral para comenzar.<br><br>"
+        f"El sistema limpiará los datos automáticamente, calculará la ruta crítica "
+        f"y te mostrará el estado del proyecto."
+        f"</div>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
         st.markdown(
             "<div style='text-align:center; padding:120px 20px;'>"
             "<h1>⚡ Bienvenido a KRATOS PM</h1>"
