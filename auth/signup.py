@@ -37,7 +37,11 @@ def signup_page():
         .execute()
     )
 
-    subsystems = subsystem_response.data
+    subsystems = subsystem_response.data or []
+
+    if not subsystems:
+        st.error("No se pudieron cargar los subsistemas")
+        st.stop()
 
     subsystem_names = [s["name"] for s in subsystems]
 
@@ -71,10 +75,7 @@ def signup_page():
 
             st.success("Usuario creado correctamente")
 
-            # Prellenar login
             st.session_state.login_email = email
-
-            # Volver automáticamente a login
             st.session_state.auth_mode = "login"
 
             st.rerun()
