@@ -27,6 +27,7 @@ from views.gantt import render_gantt
 from views.my_tasks import render_my_tasks
 from views.task_editor import render_task_editor
 from views.diagnostics import render_diagnostics
+from views.cad_review import render_cad_review
 
 
 # ── Inyectar CSS Kratos ──
@@ -155,7 +156,7 @@ with st.sidebar:
     page = st.radio(
         "Ir a",
         ["📊 Dashboard", "📅 Gantt", "👤 Mis Tareas",
-         "✏️ Editor", "🔍 Diagnóstico"],
+         "✏️ Editor", "🔍 Diagnóstico", "📐 Revisión CAD"],
         key="nav",
         label_visibility="collapsed",
     )
@@ -170,7 +171,10 @@ with st.sidebar:
 
 
 # ── Contenido principal ──
-if not st.session_state.data_loaded:
+if page == "📐 Revisión CAD":
+    render_cad_review()
+
+elif not st.session_state.data_loaded:
     # Landing page
     st.markdown(
         "<div style='text-align:center; padding:80px 20px;'>"
