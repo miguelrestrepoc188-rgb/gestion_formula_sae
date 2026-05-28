@@ -29,6 +29,8 @@ def clear_session():
         "cpm_stats",
         "data_loaded",
         "nav",
+        "manual_reload_requested",
+        "uploaded_file_name",
     ]
 
     for key in keys_to_clear:

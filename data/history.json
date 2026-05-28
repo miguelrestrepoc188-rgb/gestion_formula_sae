@@ -20,23 +20,13 @@
     "avance_pct": 77.1
   },
   {
-    "timestamp": "2026-05-12T21:33:21",
-    "filename": "Cronograma Detallado de Tareas (1).xlsx",
-    "total": 415,
-    "terminadas": 301,
-    "en_progreso": 38,
-    "no_iniciadas": 76,
+    "timestamp": "2026-05-27T22:57:57",
+    "filename": "Cronograma Detallado de Tareas.xlsx",
+    "total": 434,
+    "terminadas": 334,
+    "en_progreso": 32,
+    "no_iniciadas": 68,
     "bloqueadas": 0,
-    "avance_pct": 77.1
-  },
-  {
-    "timestamp": "2026-05-15T17:30:40",
-    "filename": "Cronograma Detallado de Tareas (1).xlsx",
-    "total": 415,
-    "terminadas": 301,
-    "en_progreso": 38,
-    "no_iniciadas": 76,
-    "bloqueadas": 0,
-    "avance_pct": 77.1
+    "avance_pct": 80.6
   }
 ]

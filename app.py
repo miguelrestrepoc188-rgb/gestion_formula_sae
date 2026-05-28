@@ -79,8 +79,38 @@ def init_session_state():
     if "auth_mode" not in st.session_state:
         st.session_state.auth_mode = "login"
 
+    if "uploaded_file_name" not in st.session_state:
+        st.session_state.uploaded_file_name = ""
+
+    if "manual_reload_requested" not in st.session_state:
+        st.session_state.manual_reload_requested = False
+
 
 init_session_state()
+
+# ─────────────────────────────────────────────
+# AUTO-CARGA DEL ÚLTIMO EXCEL
+# ─────────────────────────────────────────────
+_last_upload = Path("data") / "last_upload.xlsx"
+
+if (
+    st.session_state.authenticated
+    and not st.session_state.data_loaded
+    and not st.session_state.manual_reload_requested
+    and _last_upload.exists()
+):
+    try:
+        _df, _report = run_pipeline(str(_last_upload))
+        _engine = CPMEngine()
+        _engine.load_from_dataframe(_df)
+        _cpm_result = _engine.compute()
+        st.session_state.df = _df
+        st.session_state.report = _report
+        st.session_state.cpm_engine = _engine
+        st.session_state.cpm_stats = _cpm_result
+        st.session_state.data_loaded = True
+    except Exception:
+        pass
 
 
 # ─────────────────────────────────────────────
@@ -125,17 +155,25 @@ with st.sidebar:
     # ─────────────────────────────────────
     else:
 
-        st.success("✅ Sesión iniciada")
+        # ─────────────────────────────────────
+        # NAVEGACIÓN
+        # ─────────────────────────────────────
+        st.markdown("**🧭 Navegación**")
 
-        # ── Logout ──
-        if st.button(
-            "🚪 Cerrar sesión",
-            use_container_width=True,
-            key="logout_button"
-        ):
-
-            clear_session()
-            st.rerun()
+        page = st.radio(
+            "Ir a",
+            [
+                "🏠 Inicio",
+                "📊 Dashboard",
+                "📅 Gantt",
+                "👤 Mis Tareas",
+                "✏️ Editor",
+                "🔍 Diagnóstico",
+                "📐 Revisión CAD"
+            ],
+            key="sidebar_navigation",
+            label_visibility="collapsed",
+        )
 
         st.markdown("---")
 
@@ -164,26 +202,30 @@ with st.sidebar:
                 help="El archivo Cronograma_Detallado_de_Tareas.xlsx"
             )
 
-            if uploaded and not st.session_state.data_loaded:
-
+            if uploaded and (
+            not st.session_state.data_loaded
+            or uploaded.name != st.session_state.uploaded_file_name
+        ):
                 with st.spinner("Procesando Excel..."):
 
-                    temp_path = Path("data") / "temp_upload.xlsx"
+                    last_path = Path("data") / "last_upload.xlsx"
 
-                    temp_path.parent.mkdir(exist_ok=True)
+                    last_path.parent.mkdir(exist_ok=True)
 
-                    temp_path.write_bytes(
+                    last_path.write_bytes(
                         uploaded.getvalue()
                     )
 
                     # Pipeline
                     df, report = run_pipeline(
-                        str(temp_path)
+                        str(last_path)
                     )
 
                     st.session_state.df = df
                     st.session_state.report = report
                     st.session_state.data_loaded = True
+                    st.session_state.uploaded_file_name = uploaded.name
+                    st.session_state.manual_reload_requested = False
 
                     # Snapshot
                     save_snapshot(
@@ -204,6 +246,7 @@ with st.sidebar:
                 st.success(
                     f"✅ {len(df)} actividades cargadas"
                 )
+                st.rerun()
 
         # ── JSON ──
         elif data_source == "Cargar JSON exportado":
@@ -282,29 +325,24 @@ with st.sidebar:
                 st.session_state.report = None
                 st.session_state.cpm_engine = None
                 st.session_state.cpm_stats = None
+                st.session_state.uploaded_file_name = ""
+                st.session_state.manual_reload_requested = True
 
                 st.rerun()
 
         st.markdown("---")
 
-        # ─────────────────────────────────────
-        # NAVEGACIÓN
-        # ─────────────────────────────────────
-        st.markdown("**🧭 Navegación**")
+        st.success("✅ Sesión iniciada")
 
-        page = st.radio(
-            "Ir a",
-            [
-                "📊 Dashboard",
-                "📅 Gantt",
-                "👤 Mis Tareas",
-                "✏️ Editor",
-                "🔍 Diagnóstico",
-                "📐 Revisión CAD"
-            ],
-            key="sidebar_navigation",
-            label_visibility="collapsed",
-        )
+        # ── Logout ──
+        if st.button(
+            "🚪 Cerrar sesión",
+            use_container_width=True,
+            key="logout_button"
+        ):
+
+            clear_session()
+            st.rerun()
 
         st.markdown("---")
 
@@ -368,31 +406,41 @@ if not st.session_state.authenticated:
 # ── Usuario autenticado ──
 else:
 
-    # ─────────────────────────────────────
-    # SIN DATOS
-    # ─────────────────────────────────────
-    if not st.session_state.data_loaded:
+    profile = st.session_state.get("profile") or {}
+    first_name = profile.get("first_name", "")
+    welcome_name = f" {first_name}" if first_name else ""
 
-        if page == "📐 Revisión CAD":
+    # ─── Inicio ───
+    if page == "🏠 Inicio":
 
-            render_cad_review()
+        st.markdown(
+            f"<div style='text-align:center; padding:120px 20px;'>"
+            f"<h1>⚡ Bienvenido{welcome_name} a KRATOS PM</h1>"
+            "<br>"
+            f"<p style='color:{TEXT_MUTED}; font-size:1rem;'>"
+            "Selecciona una sección en el menú lateral para comenzar."
+            "</p>"
+            "</div>",
+            unsafe_allow_html=True,
+        )
 
-        else:
+    # ─── CAD (no requiere datos del Excel) ───
+    elif page == "📐 Revisión CAD":
 
-            st.markdown(
-                "<div style='text-align:center; padding:120px 20px;'>"
-                "<h1>⚡ Bienvenido a KRATOS PM</h1>"
-                "<br>"
-                "<p>"
-                "Carga un cronograma desde el sidebar para comenzar."
-                "</p>"
-                "</div>",
-                unsafe_allow_html=True,
-            )
+        render_cad_review()
 
-    # ─────────────────────────────────────
-    # CON DATOS
-    # ─────────────────────────────────────
+    # ─── Páginas que requieren datos ───
+    elif not st.session_state.data_loaded:
+
+        st.markdown(
+            f"<div style='text-align:center; padding:120px 20px;'>"
+            f"<p style='color:{TEXT_MUTED}; font-size:1rem;'>"
+            "Carga un cronograma desde el sidebar para ver esta sección."
+            "</p>"
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
     else:
 
         df = st.session_state.df
@@ -436,8 +484,3 @@ else:
                 df,
                 report
             )
-
-        # ── CAD ──
-        elif page == "📐 Revisión CAD":
-
-            render_cad_review()

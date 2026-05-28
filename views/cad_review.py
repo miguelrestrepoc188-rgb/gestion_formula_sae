@@ -77,9 +77,9 @@ def render_cad_review():
 
     k1, k2, k3, k4 = st.columns(4)
     k1.metric("Piezas registradas", total_piezas)
-    k2.metric("Bien diseñadas",      f"{total_bd}/{total_piezas}")
-    k3.metric("DFM aprobadas",        f"{total_dfm}/{total_piezas}")
-    k4.metric("DFA aprobadas",        f"{total_dfa}/{total_piezas}")
+    k2.metric("DFM aprobadas",      f"{total_dfm}/{total_piezas}")
+    k3.metric("DFA aprobadas",      f"{total_dfa}/{total_piezas}")
+    k4.metric("BOM",                f"{total_bd}/{total_piezas}")
 
     st.markdown("---")
 
@@ -150,17 +150,17 @@ def render_cad_review():
         h0, h1, h2, h3, h4 = st.columns([4, 1, 1, 1, 0.6])
         h1.markdown(
             f"<div style='text-align:center; color:{TEXT_MUTED}; font-size:0.75rem; "
-            f"font-weight:600; text-transform:uppercase;'>Bien<br>diseñada</div>",
+            f"font-weight:600; text-transform:uppercase;'>DFM</div>",
             unsafe_allow_html=True,
         )
         h2.markdown(
             f"<div style='text-align:center; color:{TEXT_MUTED}; font-size:0.75rem; "
-            f"font-weight:600; text-transform:uppercase;'>DFM</div>",
+            f"font-weight:600; text-transform:uppercase;'>DFA</div>",
             unsafe_allow_html=True,
         )
         h3.markdown(
             f"<div style='text-align:center; color:{TEXT_MUTED}; font-size:0.75rem; "
-            f"font-weight:600; text-transform:uppercase;'>DFA</div>",
+            f"font-weight:600; text-transform:uppercase;'>BOM</div>",
             unsafe_allow_html=True,
         )
 
@@ -182,9 +182,9 @@ def render_cad_review():
                 unsafe_allow_html=True,
             )
 
-            new_bd  = c1.checkbox("", value=pieza["bd"],  key=f"bd_{safe_key}",  label_visibility="collapsed")
-            new_dfm = c2.checkbox("", value=pieza["dfm"], key=f"dfm_{safe_key}", label_visibility="collapsed")
-            new_dfa = c3.checkbox("", value=pieza["dfa"], key=f"dfa_{safe_key}", label_visibility="collapsed")
+            new_dfm = c1.checkbox("", value=pieza["dfm"], key=f"dfm_{safe_key}", label_visibility="collapsed")
+            new_dfa = c2.checkbox("", value=pieza["dfa"], key=f"dfa_{safe_key}", label_visibility="collapsed")
+            new_bd  = c3.checkbox("", value=pieza["bd"],  key=f"bd_{safe_key}",  label_visibility="collapsed")
 
             if c4.button("🗑️", key=f"del_{safe_key}", help="Eliminar pieza"):
                 to_delete = idx
