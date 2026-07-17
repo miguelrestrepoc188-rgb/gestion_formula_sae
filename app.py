@@ -39,6 +39,9 @@ from views.my_tasks import render_my_tasks
 from views.task_editor import render_task_editor
 from views.diagnostics import render_diagnostics
 from views.cad_review import render_cad_review
+from views.trends import render_trends
+from views.whatif import render_whatif
+from views.countdown import render_countdown
 from views.auth_view import auth_view
 
 from auth.session import clear_session
@@ -165,10 +168,13 @@ with st.sidebar:
             [
                 "🏠 Inicio",
                 "📊 Dashboard",
+                "🏁 Countdown",
                 "📅 Gantt",
                 "👤 Mis Tareas",
                 "✏️ Editor",
                 "🔍 Diagnóstico",
+                "📈 Tendencias",
+                "🔮 What-If CPM",
                 "📐 Revisión CAD"
             ],
             key="sidebar_navigation",
@@ -456,6 +462,11 @@ else:
                 cpm_stats
             )
 
+        # ── Countdown ──
+        elif page == "🏁 Countdown":
+
+            render_countdown(df)
+
         # ── Gantt ──
         elif page == "📅 Gantt":
 
@@ -484,3 +495,13 @@ else:
                 df,
                 report
             )
+
+        # ── Tendencias ──
+        elif page == "📈 Tendencias":
+
+            render_trends(df)
+
+        # ── What-If CPM ──
+        elif page == "🔮 What-If CPM":
+
+            render_whatif(df, cpm_engine)
