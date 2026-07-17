@@ -29,7 +29,8 @@ def save_snapshot(df: pd.DataFrame, filename: str) -> None:
     en_progreso = int((df["estado"] == "en_progreso").sum())
     no_iniciadas = int((df["estado"] == "no_iniciado").sum())
     bloqueadas = int((df["estado"] == "bloqueado").sum())
-    avance_pct = round(float(df["avance_pct"].mean()), 1) if "avance_pct" in df.columns else 0.0
+    avance_pct = round(terminadas / total * 100, 1) if total > 0 else 0.0
+    trabajo_activo_pct = round(en_progreso / total * 100, 1) if total > 0 else 0.0
 
     snapshot = {
         "timestamp": datetime.now().isoformat(timespec="seconds"),
@@ -40,6 +41,7 @@ def save_snapshot(df: pd.DataFrame, filename: str) -> None:
         "no_iniciadas": no_iniciadas,
         "bloqueadas": bloqueadas,
         "avance_pct": avance_pct,
+        "trabajo_activo_pct": trabajo_activo_pct,
     }
 
     history = load_history()

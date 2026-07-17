@@ -356,14 +356,11 @@ def normalize_responsables(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def compute_progress(df: pd.DataFrame) -> pd.DataFrame:
-    """Calcula avance basado en estado (si no hay % explícito)."""
-    avance_map = {
-        "no_iniciado": 0,
-        "en_progreso": 50,
-        "terminado": 100,
-        "bloqueado": 0,
-    }
-    df["avance_pct"] = df["estado"].map(avance_map).fillna(0)
+    """Calcula avance como porcentaje de tareas terminadas sobre el total."""
+    total = len(df)
+    terminadas = (df["estado"] == "terminado").sum()
+    pct = round(terminadas / total * 100, 1) if total > 0 else 0.0
+    df["avance_pct"] = pct
     return df
 
 

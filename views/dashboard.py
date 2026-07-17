@@ -80,7 +80,9 @@ def render_dashboard(df: pd.DataFrame, cpm_stats: dict):
         delta_total_str = None
         delta_color_total = "off"
 
-    c1, c2, c3, c4, c5 = st.columns(5)
+    trabajo_activo_pct = round(en_progreso / total * 100, 1) if total > 0 else 0.0
+
+    c1, c2, c3, c4, c5, c6 = st.columns(6)
     c1.metric(
         "Actividades Totales",
         total,
@@ -88,9 +90,10 @@ def render_dashboard(df: pd.DataFrame, cpm_stats: dict):
         delta_color=delta_color_total,
     )
     c2.metric("Avance Global", f"{avance_global}%")
-    c3.metric("Terminadas", terminadas, delta=f"{round(terminadas/total*100,1)}%")
-    c4.metric("En Progreso", en_progreso)
-    c5.metric("Duración", f"{dur_days}D", delta=f"{dur_weeks} semanas", delta_color="off")
+    c3.metric("Trabajo Activo", f"{trabajo_activo_pct}%", delta=f"{en_progreso} tareas", delta_color="off")
+    c4.metric("Terminadas", terminadas, delta=f"{round(terminadas/total*100,1)}%")
+    c5.metric("En Progreso", en_progreso)
+    c6.metric("Duración", f"{dur_days}D", delta=f"{dur_weeks} semanas", delta_color="off")
 
     # ── Historial de cargas ──
     history = load_history()
